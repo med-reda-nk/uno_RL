@@ -1,0 +1,59 @@
+# =============================================================================
+# UNO RL Project .gitignore
+# =============================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual Environments
+.venv/
+.venv1/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Training Outputs (large files - train locally)
+# Uncomment if you don't want to track models in git
+# models/*.zip
+# models/*.pkl
+
+# Logs (can be regenerated)
+logs/
+*.log
+
+# TensorBoard
+runs/
+tensorboard_logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
