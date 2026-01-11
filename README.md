@@ -243,19 +243,3 @@ The Recurrent PPO models with LSTM memory significantly outperform standard mode
 - 60% win rate vs random opponent (vs 50% baseline)
 - Enhanced reward shaping improved convergence
 
-## Future Improvements
-
-| Level | Improvement | Description |
-|-------|-------------|-------------|
-| 🟢 Easy | **Add logging** | Replace `print()` with `logging` module for better debugging |
-| 🟢 Easy | **Add `pyproject.toml`** | Modern Python packaging standard |
-| 🟡 Medium | **Add CI/CD** | GitHub Actions to run tests automatically |
-| 🟡 Medium | **Add multiplayer** | Allow 3-4 players instead of just 2 |
-| 🟡 Medium | **Improve win rate** | Train with self-play or curriculum learning (target: 70%+) |
-| 🔴 Advanced | **Web version** | Convert Pygame to web app (Flask + JS or Streamlit) |
-| 🔴 Advanced | **Human vs Human online** | Add networking for online play |
-
-## Credits
-
-Original project by [Bernhard Pfann](https://www.linkedin.com/in/bernhard-pfann/)  
-Article: [Tackling UNO with Reinforcement Learning](https://towardsdatascience.com/tackling-uno-card-game-with-reinforcement-learning-fad2fc19355c)
