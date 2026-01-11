@@ -2,6 +2,10 @@
 
 A complete UNO card game implementation with trained RL agents using Stable Baselines3.
 
+- models link : [models](https://drive.google.com/drive/folders/15scFJZZgl2_fWGNbJ91UexQvjNqjRhEy?usp=drive_link)
+
+- report link : https://guardvision2.readthedocs.io/fr/latest/index.html
+- 
 ## Quick Start
 
 ```bash
