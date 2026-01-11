@@ -1,0 +1,183 @@
+============================================================
+REWARD FUNCTION (Same for All Models)
+============================================================
+All models use the same UnoEnv environment with this reward structure:
+
+| Event                              | Reward                              |
+|------------------------------------|-------------------------------------|
+| Win the game                       | +100                                |
+| Lose the game                      | -50                                 |
+| Play a valid card                  | +1.0                                |
+| Play special card (SKI, REV)       | +1.0 bonus                          |
+| Play +2 card (PL2)                 | +1.0 bonus + opponent draws 2       |
+| Play +4 card (PL4)                 | +2.0 bonus + opponent draws 4       |
+| Draw a card (no valid play)        | -0.5                                |
+| Invalid action (corrected)         | -0.2                                |
+| Truncation (max 500 steps)         | (opponent_cards - player_cards) × 2 |
+
+============================================================
+POLICIES BY ALGORITHM
+============================================================
+
+| Model          | Policy         | Network Architecture | Key Features                         |
+|----------------|----------------|----------------------|--------------------------------------|
+| PPO            | MlpPolicy      | [256, 256] (pi/vf)   | Actor-Critic with clipped objective  |
+| DQN            | MlpPolicy      | [256, 256, 128]      | Q-learning with replay buffer        |
+| A2C            | MlpPolicy      | [256, 256] (pi/vf)   | Advantage Actor-Critic               |
+| Recurrent PPO  | MlpLstmPolicy  | LSTM-based           | PPO with memory (LSTM) for patterns  |
+
+============================================================
+HYPERPARAMETERS (Training Mode)
+============================================================
+
+| Parameter       | PPO   | DQN     | A2C   | Recurrent PPO |
+|-----------------|-------|---------|-------|---------------|
+| Learning Rate   | 3e-4  | 1e-4    | 7e-4  | 3e-4          |
+| Batch Size      | 64    | 64      | -     | 64            |
+| Gamma           | 0.99  | 0.99    | 0.99  | 0.99          |
+| GAE Lambda      | 0.95  | -       | 0.95  | 0.95          |
+| Entropy Coef    | 0.01  | -       | 0.01  | 0.01          |
+| Clip Range      | 0.2   | -       | -     | 0.2           |
+| Buffer Size     | -     | 100,000 | -     | -             |
+| N Steps         | 2048  | -       | 5     | 2048          |
+| N Epochs        | 10    | -       | -     | 10            |
+
+============================================================
+NOTES
+============================================================
+- Recurrent PPO uses an LSTM layer (MlpLstmPolicy) which allows it to 
+  remember previous game states, contributing to its slightly better 
+  performance (54% win rate).
+- All models play against a random opponent.
+- Observation space: 17 features (card counts, open card color, playable cards)
+- Action space: 9 discrete actions (4 colors, 3 special cards, 2 wild cards)
+============================================================
+COMPARING EXISTING MODELS
+============================================================
+
+📊 Evaluating PPO...
+   Win Rate: 45.0%
+   Avg Reward: 31.27
+
+📊 Evaluating DQN...
+   Win Rate: 41.0%
+   Avg Reward: 25.67
+
+📊 Evaluating A2C...
+   Win Rate: 47.0%
+   Avg Reward: 34.58
+
+📊 Evaluating Best Model...
+   Win Rate: 50.0%
+   Avg Reward: 40.87
+
+📊 Evaluating Recurrent PPO...
+   Win Rate: 52.0%
+   Avg Reward: 44.64
+
+📄 Results saved to: comparison_results\existing_models_20251224_145950.csv
+📊 Visualization saved to: comparison_results\existing_models_20251224_145950.png
+
+============================================================
+SUMMARY
+============================================================
+   model_name  win_rate  avg_reward  wins  losses
+Recurrent PPO      52.0      44.643    52      48
+   Best Model      50.0      40.870    50      50
+          A2C      47.0      34.576    47      53
+          PPO      45.0      31.272    45      55
+          DQN      41.0      25.674    41      59
+
+🏆 Best Model: Recurrent PPO with 52.0% win rate
+⏱️ Training time: 3:57:25.396912
+
+📊 Running final evaluation (300 episodes)...
+
+==================================================
+📊 FINAL RESULTS
+==================================================
+Win Rate: 52.0%
+Wins: 156 / 300
+
+============================================================
+ENHANCED RPPO MODEL (Best Performing)
+============================================================
+Trained: January 10, 2026
+Timesteps: 1,000,000
+Observation Space: 21 features (enhanced)
+Opponent Strength: 0.2 (20% smart)
+
+📊 EVALUATION RESULTS (300 episodes)
+--------------------------------------------------
+Win Rate: 56.0%
+Wins: 168 / 300
+Algorithm: ENHANCED_RPPO
+Model Path: models/enhanced_rppo.zip
+
+Key Improvements:
+- LSTM Hidden Size: 512 (vs 256)
+- Policy Network: [512, 256] (larger)
+- n_steps: 512 (longer sequences)
+- Epochs per update: 15 (vs 10)
+- Learning Rate: 3e-4 → 5e-6 (cosine)
+- Gamma: 0.995 (longer horizon)
+- Enhanced reward shaping (+150 for win, +5 for UNO)
+
+============================================================
+LATEST COMPARISON RESULTS (January 10, 2026)
+============================================================
+
+📊 Evaluating PPO...           Win Rate: 54.0%  Avg Reward: 44.88
+📊 Evaluating DQN...           Win Rate: 44.0%  Avg Reward: 30.96
+📊 Evaluating A2C...           Win Rate: 55.0%  Avg Reward: 47.88
+📊 Evaluating PPO Best Config... Win Rate: 52.0%  Avg Reward: 44.11
+📊 Evaluating Recurrent PPO... Win Rate: 50.0%  Avg Reward: 36.68
+📊 Evaluating SB3 Recurrent PPO... Win Rate: 57.0%  Avg Reward: 50.69
+📊 Evaluating Best Recurrent PPO... Win Rate: 60.0%  Avg Reward: 54.54
+📊 Evaluating Optimal Recurrent PPO... Win Rate: 59.0%  Avg Reward: 54.61
+📊 Evaluating Best Optimal RPPO... Win Rate: 48.0%  Avg Reward: 36.57
+📊 Evaluating Enhanced RPPO... Win Rate: 49.0%  Avg Reward: 71.58
+📊 Evaluating Best Enhanced RPPO... Win Rate: 56.0%  Avg Reward: 90.75
+📊 Evaluating Best PPO...      Win Rate: 45.0%  Avg Reward: 32.18
+📊 Evaluating Best Model...    Win Rate: 49.0%  Avg Reward: 39.21
+
+============================================================
+FINAL RANKINGS (January 10, 2026)
+============================================================
+| Rank | Model                  | Win Rate | Avg Reward | Wins | Losses |
+|------|------------------------|----------|------------|------|--------|
+| 🥇 1 | Best Recurrent PPO     | 60.0%    | 54.54      | 60   | 40     |
+| 🥈 2 | Optimal Recurrent PPO  | 59.0%    | 54.61      | 59   | 41     |
+| 🥉 3 | SB3 Recurrent PPO      | 57.0%    | 50.69      | 57   | 43     |
+|    4 | Best Enhanced RPPO     | 56.0%    | 90.75      | 56   | 44     |
+|    5 | A2C                    | 55.0%    | 47.88      | 55   | 45     |
+|    6 | PPO                    | 54.0%    | 44.88      | 54   | 46     |
+|    7 | PPO Best Config        | 52.0%    | 44.11      | 52   | 48     |
+|    8 | Recurrent PPO          | 50.0%    | 36.68      | 50   | 50     |
+|    9 | Best Model             | 49.0%    | 39.21      | 49   | 51     |
+|   10 | Enhanced RPPO          | 49.0%    | 71.58      | 49   | 51     |
+|   11 | Best Optimal RPPO      | 48.0%    | 36.57      | 48   | 52     |
+|   12 | Best PPO               | 45.0%    | 32.18      | 45   | 55     |
+|   13 | DQN                    | 44.0%    | 30.96      | 44   | 56     |
+
+🏆 BEST MODEL: Best Recurrent PPO with 60.0% win rate
+
+============================================================
+KEY INSIGHTS
+============================================================
+- LSTM-based models (Recurrent PPO variants) dominate the top rankings
+- Best Enhanced RPPO has highest avg reward (90.75) due to enhanced reward shaping
+- Memory-based models excel at tracking card patterns in UNO
+- Win rates vary between runs due to game stochasticity (±5%)
+Average Reward: 42.56
+Average Episode Length: 27.9
+==================================================
+TRUE HEAD-TO-HEAD: Self-Play vs Best Models
+============================================
+
+Self-Play vs SB3 Recurrent PPO        : 25/50 (50%)
+Self-Play vs Optimal Recurrent PPO    : 28/50 (56%)
+Self-Play vs PPO                      : 28/50 (56%)
+Self-Play vs Best PPO                 : 27/50 (54%)
+
+ Higher % = Self-Play Champion is better
