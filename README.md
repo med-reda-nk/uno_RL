@@ -5,7 +5,7 @@ A complete UNO card game implementation with trained RL agents using Stable Base
 - models link : [models](https://drive.google.com/drive/folders/15scFJZZgl2_fWGNbJ91UexQvjNqjRhEy?usp=drive_link)
 
 - report link : [Docs](https://uno-rl.readthedocs.io/en/latest/)
-- 
+ 
 ## Quick Start
 
 ```bash
