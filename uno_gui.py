@@ -846,55 +846,28 @@ class Particle:
             self.vx *= 0.97  # Air resistance
             self.rotation += self.rotation_speed
         
-        self.life -= 0.012 if self.effect_type == 'confetti' else 0.018
-        self.shimmer = 0.7 + 0.3 * math.sin(self.life * 10)
+        self.life -= 0.02  # Faster decay for better performance
         
     def render(self, surface: pygame.Surface):
-        """Render the particle with enhanced glow effect."""
+        """Render the particle with simplified effect."""
         if self.life > 0:
-            # Smooth cubic fade for more elegant disappearance
-            alpha = int(255 * self.life * self.life * self.life * self.shimmer)
+            # Simple linear fade
+            alpha = int(255 * self.life * self.life)
             alpha = max(0, min(255, alpha))
-            size = max(2, int(self.size * (0.5 + 0.5 * self.life)))
+            size = max(2, int(self.size * self.life))
             
-            # Create particle surface with extra space for glow
-            surf_size = size * 4
-            particle_surface = pygame.Surface((surf_size, surf_size), pygame.SRCALPHA)
-            center = surf_size // 2
-            
-            if self.shape == 'circle':
-                # Multi-layer glow for premium effect
-                for i, mult in enumerate([2.5, 2.0, 1.5, 1.0]):
-                    glow_alpha = alpha // (4 - i)
-                    glow_size = int(size * mult)
-                    pygame.draw.circle(particle_surface, (*self.color, glow_alpha), 
-                                     (center, center), glow_size)
-            elif self.shape == 'diamond':
-                # Rotate a square to make diamond
-                points = [
-                    (center, center - size),
-                    (center + size, center),
-                    (center, center + size),
-                    (center - size, center)
-                ]
-                pygame.draw.polygon(particle_surface, (*self.color, alpha), points)
-            elif self.shape == 'rect':
+            # Simple circle drawing instead of complex shapes
+            if self.shape == 'rect':
                 # Confetti rectangle
                 rect_surf = pygame.Surface((size, size // 2), pygame.SRCALPHA)
                 rect_surf.fill((*self.color, alpha))
                 rotated = pygame.transform.rotate(rect_surf, self.rotation)
-                particle_surface.blit(rotated, rotated.get_rect(center=(center, center)))
-            else:  # star
-                pygame.draw.circle(particle_surface, (*self.color, alpha), 
-                                 (center, center), size)
-                # Add cross sparkle
-                line_len = size + 2
-                pygame.draw.line(particle_surface, (*self.color, alpha // 2), 
-                               (center - line_len, center), (center + line_len, center), 2)
-                pygame.draw.line(particle_surface, (*self.color, alpha // 2), 
-                               (center, center - line_len), (center, center + line_len), 2)
-            
-            surface.blit(particle_surface, (int(self.x - center), int(self.y - center)))
+                surface.blit(rotated, (int(self.x - rotated.get_width() // 2), 
+                                       int(self.y - rotated.get_height() // 2)))
+            else:
+                # Simple circle for all other types
+                pygame.draw.circle(surface, (*self.color[:3], alpha), 
+                                 (int(self.x), int(self.y)), size)
 
 
 # =============================================================================
@@ -909,12 +882,19 @@ class UnoGame:
         pygame.display.set_caption("UNO - Card Game")
         self.clock = pygame.time.Clock()
         
+        # Pre-render cached backgrounds for performance
+        self._cached_bg = None
+        self._cached_vignette = None
+        self._cached_grid = None
+        self._build_cached_backgrounds()
+        
         self.state = GameState.MENU
         self.deck: Optional[Deck] = None
         self.player_hand: List[Card] = []
         self.ai_hand: List[Card] = []
         self.open_card: Optional[Card] = None
         self.particles: List[Particle] = []
+        self.max_particles = 30  # Limit particles for performance
         self.message = ""
         self.message_timer = 0
         self.winner = ""
@@ -927,16 +907,16 @@ class UnoGame:
         self.rl_agent = None
         self.rl_thinking_timer = 0
         
-        # Model selector for choosing AI opponent
+        # Model selector for choosing AI opponent (positioned on the left)
         self.model_selector = ModelSelector(
-            WINDOW_WIDTH // 2 - 160, 320, 320, 48, "AI Opponent"
+            60, 420, 320, 48, "AI Opponent"
         )
         self.load_rl_agent()
         
-        # Create premium styled buttons
+        # Create premium styled buttons (centered on right side)
         btn_width = 240
         btn_height = 54
-        center_x = WINDOW_WIDTH // 2 - btn_width // 2
+        center_x = 700  # Center buttons on right side of screen
         
         self.play_button = Button(center_x, 485, btn_width, btn_height, 
                                   "Play Game", COLORS['BUTTON_PRIMARY'])
@@ -1176,9 +1156,11 @@ class UnoGame:
         self.message = text
         self.message_timer = duration
     
-    def spawn_particles(self, x: int, y: int, color: Tuple[int, int, int], count: int = 20, effect_type: str = 'burst'):
+    def spawn_particles(self, x: int, y: int, color: Tuple[int, int, int], count: int = 10, effect_type: str = 'burst'):
         """Spawn celebration particles with different effect types."""
-        for _ in range(count):
+        # Limit particle count for performance
+        count = min(count, self.max_particles - len(self.particles))
+        for _ in range(max(0, count)):
             self.particles.append(Particle(x, y, color, effect_type))
     
     def get_playable_cards(self, hand: List[Card]) -> List[Card]:
@@ -1732,72 +1714,67 @@ class UnoGame:
             else:
                 self.rl_player_turn()
     
-    def render_background(self):
-        """Render ultra-modern gradient background with ambient lighting effects."""
-        # Create smooth gradient with multiple stops
-        bg_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
-        
-        # Multi-stop vertical gradient for depth
+    def _build_cached_backgrounds(self):
+        """Pre-render static background elements for performance."""
+        # Cache gradient background
+        self._cached_bg = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         for y in range(WINDOW_HEIGHT):
             progress = y / WINDOW_HEIGHT
-            # Smooth cubic easing for elegant gradient
             eased = progress * progress * (3 - 2 * progress)
-            
-            # Add subtle color variation
             r = int(COLORS['BG_TOP'][0] + eased * (COLORS['BG_BOTTOM'][0] - COLORS['BG_TOP'][0]))
             g = int(COLORS['BG_TOP'][1] + eased * (COLORS['BG_BOTTOM'][1] - COLORS['BG_TOP'][1]))
             b = int(COLORS['BG_TOP'][2] + eased * (COLORS['BG_BOTTOM'][2] - COLORS['BG_TOP'][2]))
-            pygame.draw.line(bg_surface, (r, g, b), (0, y), (WINDOW_WIDTH, y))
+            pygame.draw.line(self._cached_bg, (r, g, b), (0, y), (WINDOW_WIDTH, y))
         
-        self.screen.blit(bg_surface, (0, 0))
-        
-        # Modern animated mesh gradient orbs
-        orb_configs = [
-            (COLORS['ACCENT_PURPLE'], 0.15, 280, 0.5),
-            (COLORS['ACCENT_CYAN'], 0.12, 240, 0.6),
-            (COLORS['ACCENT_BLUE'], 0.18, 220, 0.4),
-            (COLORS['ACCENT_PINK'], 0.10, 200, 0.7),
-        ]
-        
-        for i, (color, speed, radius, vert_scale) in enumerate(orb_configs):
-            angle = math.radians(self.animation_offset * speed + i * 90)
-            cx = WINDOW_WIDTH / 2 + math.cos(angle) * (280 + i * 70)
-            cy = WINDOW_HEIGHT / 2 + math.sin(angle) * (150 + i * 40) * vert_scale
-            
-            # Multi-layer soft gradient orb
-            glow_surface = pygame.Surface((radius * 3, radius * 3), pygame.SRCALPHA)
-            for rad in range(radius, 10, -6):
-                alpha = int(18 * (radius - rad) / radius)
-                pygame.draw.circle(glow_surface, (*color[:3], alpha), 
-                                 (radius * 1.5, radius * 1.5), rad)
-            
-            self.screen.blit(glow_surface, (int(cx - radius * 1.5), int(cy - radius * 1.5)))
-        
-        # Subtle radial vignette from center
-        vignette = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        # Cache vignette
+        self._cached_vignette = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
         max_rad = int(max(WINDOW_WIDTH, WINDOW_HEIGHT) * 0.8)
-        for rad in range(max_rad, 200, -15):
+        for rad in range(max_rad, 200, -30):  # Reduced iterations
             alpha = int(4 * (max_rad - rad) / (max_rad - 200))
-            pygame.draw.circle(vignette, (0, 0, 0, alpha), 
+            pygame.draw.circle(self._cached_vignette, (0, 0, 0, alpha), 
                              (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2), rad)
-        self.screen.blit(vignette, (0, 0))
         
-        # Modern grid pattern overlay (very subtle)
-        grid_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        # Cache grid
+        self._cached_grid = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
         grid_spacing = 80
         grid_alpha = 8
         for gx in range(0, WINDOW_WIDTH, grid_spacing):
-            pygame.draw.line(grid_surface, (255, 255, 255, grid_alpha), (gx, 0), (gx, WINDOW_HEIGHT))
+            pygame.draw.line(self._cached_grid, (255, 255, 255, grid_alpha), (gx, 0), (gx, WINDOW_HEIGHT))
         for gy in range(0, WINDOW_HEIGHT, grid_spacing):
-            pygame.draw.line(grid_surface, (255, 255, 255, grid_alpha), (0, gy), (WINDOW_WIDTH, gy))
-        self.screen.blit(grid_surface, (0, 0))
+            pygame.draw.line(self._cached_grid, (255, 255, 255, grid_alpha), (0, gy), (WINDOW_WIDTH, gy))
+    
+    def render_background(self):
+        """Render optimized background with cached elements."""
+        # Use cached gradient background
+        self.screen.blit(self._cached_bg, (0, 0))
+        
+        # Simplified animated orbs (reduced from 4 to 2, simpler drawing)
+        orb_configs = [
+            (COLORS['ACCENT_PURPLE'], 0.15, 200),
+            (COLORS['ACCENT_CYAN'], 0.12, 180),
+        ]
+        
+        for i, (color, speed, radius) in enumerate(orb_configs):
+            angle = math.radians(self.animation_offset * speed + i * 90)
+            cx = int(WINDOW_WIDTH / 2 + math.cos(angle) * (280 + i * 100))
+            cy = int(WINDOW_HEIGHT / 2 + math.sin(angle) * 120)
+            
+            # Simple single-layer orb glow
+            glow_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+            pygame.draw.circle(glow_surface, (*color[:3], 15), (radius, radius), radius)
+            pygame.draw.circle(glow_surface, (*color[:3], 25), (radius, radius), radius // 2)
+            self.screen.blit(glow_surface, (cx - radius, cy - radius))
+        
+        # Use cached vignette and grid
+        self.screen.blit(self._cached_vignette, (0, 0))
+        self.screen.blit(self._cached_grid, (0, 0))
     
     def render_menu(self):
         """Render the main menu with premium modern design."""
         self.render_background()
         
-        # Floating ambient particles in menu
-        if random.random() < 0.03:
+        # Floating ambient particles in menu (reduced spawn rate)
+        if random.random() < 0.01 and len(self.particles) < self.max_particles:
             px = random.randint(100, WINDOW_WIDTH - 100)
             py = WINDOW_HEIGHT + 10
             color = random.choice([COLORS['ACCENT_PURPLE'], COLORS['ACCENT_BLUE'], COLORS['ACCENT_CYAN']])
@@ -1894,8 +1871,13 @@ class UnoGame:
                        y - rotated_card.get_height() // 2 + card_h // 2)
             self.screen.blit(rotated_card, card_pos)
         
-        # Glass panel for buttons
-        panel_w, panel_h = 280, 240
+        # Button dimensions - centered on screen
+        btn_width = 240
+        btn_height = 54
+        btn_spacing = 65  # Vertical spacing between buttons
+        
+        # Glass panel for buttons (centered on screen)
+        panel_w, panel_h = 280, 220
         panel_x = WINDOW_WIDTH // 2 - panel_w // 2
         panel_y = 420
         
@@ -1904,16 +1886,17 @@ class UnoGame:
         pygame.draw.rect(panel_surface, (255, 255, 255, 25), (0, 0, panel_w, panel_h), width=1, border_radius=20)
         self.screen.blit(panel_surface, (panel_x, panel_y))
         
-        # Update button positions for new layout
-        btn_width = 240
-        btn_height = 54
-        center_x = WINDOW_WIDTH // 2 - btn_width // 2
+        # Center buttons within the panel
+        btn_x = panel_x + (panel_w - btn_width) // 2
+        btn_start_y = panel_y + 20  # Start 20px from top of panel
         
-        self.play_button.rect = pygame.Rect(center_x, 485, btn_width, btn_height)
-        self.watch_button.rect = pygame.Rect(center_x, 555, btn_width, btn_height)
-        self.multiplayer_button.rect = pygame.Rect(center_x, 625, btn_width, btn_height)
+        self.play_button.rect = pygame.Rect(btn_x, btn_start_y, btn_width, btn_height)
+        self.watch_button.rect = pygame.Rect(btn_x, btn_start_y + btn_spacing, btn_width, btn_height)
+        self.multiplayer_button.rect = pygame.Rect(btn_x, btn_start_y + btn_spacing * 2, btn_width, btn_height)
         
-        # Draw model selector first (above buttons)
+        # Draw model selector on the left side
+        self.model_selector.rect.x = 60
+        self.model_selector.rect.y = 420
         self.model_selector.draw(self.screen)
         
         # Play button
@@ -1952,37 +1935,41 @@ class UnoGame:
         self.render_background()
         
         # === AI SECTION (Top) ===
-        # Glass panel background for AI with gradient border
-        ai_panel = pygame.Surface((WINDOW_WIDTH - 60, 125), pygame.SRCALPHA)
-        pygame.draw.rect(ai_panel, (0, 0, 0, 40), (0, 0, WINDOW_WIDTH - 60, 125), border_radius=18)
-        pygame.draw.rect(ai_panel, (255, 255, 255, 15), (0, 0, WINDOW_WIDTH - 60, 125), width=1, border_radius=18)
-        self.screen.blit(ai_panel, (30, 15))
+        # Glass panel background for AI on the LEFT side (vertical layout)
+        ai_panel_height = min(450, max(200, len(self.ai_hand) * 28 + 80))
+        ai_panel = pygame.Surface((140, ai_panel_height), pygame.SRCALPHA)
+        pygame.draw.rect(ai_panel, (0, 0, 0, 40), (0, 0, 140, ai_panel_height), border_radius=18)
+        pygame.draw.rect(ai_panel, (255, 255, 255, 15), (0, 0, 140, ai_panel_height), width=1, border_radius=18)
+        ai_panel_y = (WINDOW_HEIGHT - ai_panel_height) // 2 - 40
+        self.screen.blit(ai_panel, (20, ai_panel_y))
         
-        # Render AI hand (face down) with stacking effect
-        ai_card_width = min(60, (WINDOW_WIDTH - 350) // max(len(self.ai_hand), 1))
-        ai_start_x = (WINDOW_WIDTH - ai_card_width * len(self.ai_hand)) // 2
+        # AI label with premium badge at top of panel
+        ai_badge = pygame.Surface((120, 34), pygame.SRCALPHA)
+        pygame.draw.rect(ai_badge, (*COLORS['ACCENT_ROSE'][:3], 200), (0, 0, 120, 34), border_radius=17)
+        pygame.draw.rect(ai_badge, (255, 255, 255, 40), (0, 0, 120, 34), width=1, border_radius=17)
+        ai_text = FONT_SMALL.render(f"AI - {len(self.ai_hand)}", True, COLORS['WHITE'])
+        ai_text_rect = ai_text.get_rect(center=(60, 17))
+        ai_badge.blit(ai_text, ai_text_rect)
+        self.screen.blit(ai_badge, (30, ai_panel_y + 10))
+        
+        # Render AI hand (face down) vertically stacked on the left
+        ai_card_spacing = min(26, (ai_panel_height - 80) // max(len(self.ai_hand), 1))
+        ai_start_y = ai_panel_y + 55
+        ai_x = 35
         
         for i, card in enumerate(self.ai_hand):
-            card.render(self.screen, ai_start_x + i * ai_card_width, 40, face_up=False, scale=0.68)
-        
-        # AI label with premium badge
-        ai_badge = pygame.Surface((160, 34), pygame.SRCALPHA)
-        pygame.draw.rect(ai_badge, (*COLORS['ACCENT_ROSE'][:3], 200), (0, 0, 160, 34), border_radius=17)
-        pygame.draw.rect(ai_badge, (255, 255, 255, 40), (0, 0, 160, 34), width=1, border_radius=17)
-        ai_text = FONT_SMALL.render(f"AI - {len(self.ai_hand)} cards", True, COLORS['WHITE'])
-        ai_text_rect = ai_text.get_rect(center=(80, 17))
-        ai_badge.blit(ai_text, ai_text_rect)
-        self.screen.blit(ai_badge, (40, 25))
+            card.render(self.screen, ai_x, ai_start_y + i * ai_card_spacing, face_up=False, scale=0.55)
         
         # === CENTER PLAY AREA ===
-        # Premium center panel with glass effect
+        # Premium center panel with glass effect (shifted right to account for AI on left)
+        center_offset = 80  # Offset to shift center area right
         center_panel = pygame.Surface((440, 200), pygame.SRCALPHA)
         pygame.draw.rect(center_panel, (0, 0, 0, 35), (0, 0, 440, 200), border_radius=24)
         pygame.draw.rect(center_panel, (255, 255, 255, 12), (0, 0, 440, 200), width=1, border_radius=24)
-        self.screen.blit(center_panel, (WINDOW_WIDTH // 2 - 220, WINDOW_HEIGHT // 2 - 100))
+        self.screen.blit(center_panel, (WINDOW_WIDTH // 2 - 220 + center_offset, WINDOW_HEIGHT // 2 - 100))
         
         # Render deck with premium styling
-        deck_x = WINDOW_WIDTH // 2 - 135
+        deck_x = WINDOW_WIDTH // 2 - 135 + center_offset
         deck_y = WINDOW_HEIGHT // 2 - 68
         
         # Draw deck stack effect with subtle glow
@@ -2011,7 +1998,7 @@ class UnoGame:
         
         # Render open card with animated glow
         if self.open_card:
-            open_x = WINDOW_WIDTH // 2 + 40
+            open_x = WINDOW_WIDTH // 2 + 40 + center_offset
             open_y = WINDOW_HEIGHT // 2 - 68
             
             # Pulsing glow under open card
@@ -2028,16 +2015,18 @@ class UnoGame:
             self.open_card.render(self.screen, open_x, open_y, scale=1.0)
         
         # === PLAYER SECTION (Bottom) ===
-        # Premium glass panel for player
-        player_panel = pygame.Surface((WINDOW_WIDTH - 60, 175), pygame.SRCALPHA)
-        pygame.draw.rect(player_panel, (0, 0, 0, 40), (0, 0, WINDOW_WIDTH - 60, 175), border_radius=18)
-        pygame.draw.rect(player_panel, (255, 255, 255, 15), (0, 0, WINDOW_WIDTH - 60, 175), width=1, border_radius=18)
-        self.screen.blit(player_panel, (30, WINDOW_HEIGHT - 190))
+        # Premium glass panel for player (adjusted to leave space for AI on left)
+        player_panel_x = 180  # Start after AI panel
+        player_panel_width = WINDOW_WIDTH - player_panel_x - 30
+        player_panel = pygame.Surface((player_panel_width, 175), pygame.SRCALPHA)
+        pygame.draw.rect(player_panel, (0, 0, 0, 40), (0, 0, player_panel_width, 175), border_radius=18)
+        pygame.draw.rect(player_panel, (255, 255, 255, 15), (0, 0, player_panel_width, 175), width=1, border_radius=18)
+        self.screen.blit(player_panel, (player_panel_x, WINDOW_HEIGHT - 190))
         
         # Render player hand with hover effects
         playable = self.get_playable_cards(self.player_hand)
-        card_width = min(80, (WINDOW_WIDTH - 320) // max(len(self.player_hand), 1))
-        start_x = (WINDOW_WIDTH - card_width * len(self.player_hand)) // 2
+        card_width = min(80, (player_panel_width - 150) // max(len(self.player_hand), 1))
+        start_x = player_panel_x + (player_panel_width - card_width * len(self.player_hand)) // 2
         y = WINDOW_HEIGHT - 170
         
         for i, card in enumerate(self.player_hand):
@@ -2074,14 +2063,14 @@ class UnoGame:
         player_text = FONT_SMALL.render(label_text, True, COLORS['WHITE'])
         player_text_rect = player_text.get_rect(center=(185 // 2, 17))
         player_badge.blit(player_text, player_text_rect)
-        self.screen.blit(player_badge, (40, WINDOW_HEIGHT - 52))
+        self.screen.blit(player_badge, (player_panel_x + 10, WINDOW_HEIGHT - 52))
         
-        # Draw and UNO buttons with updated positions
+        # Draw and UNO buttons with updated positions (on right side)
         if self.state == GameState.PLAYER_TURN and not self.rl_mode:
-            self.draw_button.rect = pygame.Rect(WINDOW_WIDTH // 2 + 200, WINDOW_HEIGHT - 195, 140, 52)
+            self.draw_button.rect = pygame.Rect(WINDOW_WIDTH - 280, WINDOW_HEIGHT - 195, 120, 52)
             self.draw_button.render(self.screen)
             if len(self.player_hand) == 2:
-                self.uno_button.rect = pygame.Rect(WINDOW_WIDTH // 2 + 360, WINDOW_HEIGHT - 195, 110, 52)
+                self.uno_button.rect = pygame.Rect(WINDOW_WIDTH - 145, WINDOW_HEIGHT - 195, 110, 52)
                 self.uno_button.render(self.screen)
         
         # Color choosing overlay with premium modal
@@ -2188,8 +2177,8 @@ class UnoGame:
         overlay.fill((0, 0, 0, 200))
         self.screen.blit(overlay, (0, 0))
         
-        # Spawn confetti for winner
-        if self.winner in ["You", "RL Agent"] and random.random() < 0.15:
+        # Spawn confetti for winner (reduced rate and limited)
+        if self.winner in ["You", "RL Agent"] and random.random() < 0.05 and len(self.particles) < self.max_particles:
             px = random.randint(100, WINDOW_WIDTH - 100)
             color = random.choice([COLORS['GOLD'], COLORS['ACCENT_CYAN'], COLORS['ACCENT_GREEN'], COLORS['WHITE']])
             self.particles.append(Particle(px, -10, color, 'confetti'))
