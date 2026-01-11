@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 
 # -- Project information -----------------------------------------------------
 project = 'UNO Card Game RL'
-copyright = '2025-2026, UNO RL Team'
+copyright = '2025-2026, Nkira Mohamed Reda - El-Hakioui Asmae'
 author = 'UNO RL Team'
 release = '1.0.0'
 version = '1.0'
@@ -80,3 +80,4 @@ intersphinx_mapping = {
 
 # -- Todo extension ----------------------------------------------------------
 todo_include_todos = True
+
