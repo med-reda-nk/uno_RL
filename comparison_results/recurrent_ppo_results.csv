@@ -1,0 +1,2 @@
+model_name,win_rate,avg_reward,avg_episode_length,total_episodes,training_timesteps
+recurrent_ppo_uno,60.0,54.54,36.3,100,100000

@@ -1,0 +1,2 @@
+wins,losses,win_rate,avg_reward,std_reward,avg_episode_length,model_name,algorithm,model_path,timesteps,training_time,timestamp
+156,144,52.0,42.56333333333333,78.45957380856859,27.85333333333333,Optimal Recurrent PPO,RECURRENTPPO,models/optimal_recurrent_ppo.zip,500000,3:57:25.396912,2026-01-09 23:15:23

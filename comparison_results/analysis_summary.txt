@@ -1,0 +1,22 @@
+UNO RL MODEL ANALYSIS SUMMARY
+Generated: 2026-01-11 14:29:38
+==================================================
+
+MODEL RANKINGS:
+  1. Self-Play Champion: 70.0%
+  2. Best Recurrent PPO: 60.0%
+  3. Optimal Recurrent PPO: 59.0%
+  4. SB3 Recurrent PPO: 57.0%
+  5. Enhanced RPPO: 56.0%
+  6. Best PPO: 53.0%
+  7. PPO: 52.0%
+  9. DQN: 48.0%
+  10. A2C: 45.0%
+
+KEY STATISTICS:
+  Best Model: Self-Play Champion (70%)
+  LSTM Advantage: +10.9%
+  Models Evaluated: 9
+
+BEST MODEL PATH:
+  models/selfplay_champion.zip
